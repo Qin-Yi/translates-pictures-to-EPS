@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<!-- saved from url=(0044)http://shtech.org/course/ist/homework/shine/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Homework 1--5: The Shine Graphics Language</title>
+
+<style type="text/css">
+code {background-color: #f8f8f8}
+pre {
+	background: #f8f8f8;
+	padding: 10px;
+ }
+
+h4,
+.rootHeading {
+	color: #375EAB;
+ }
+
+h2, h3 {
+	background: #E0EBF5;
+}
+a,
+.exampleHeading .text {
+	color: #375EAB;
+	text-decoration: none;
+}
+a:hover,
+.exampleHeading .text:hover {
+	text-decoration: underline;
+ }
+</style>
+<style>@-moz-keyframes nodeInserted{from{opacity:0.99;}to{opacity:1;}}@-webkit-keyframes nodeInserted{from{opacity:0.99;}to{opacity:1;}}@-o-keyframes nodeInserted{from{opacity:0.99;}to{opacity:1;}}@keyframes nodeInserted{from{opacity:0.99;}to{opacity:1;}}embed,object{animation-duration:.001s;-ms-animation-duration:.001s;-moz-animation-duration:.001s;-webkit-animation-duration:.001s;-o-animation-duration:.001s;animation-name:nodeInserted;-ms-animation-name:nodeInserted;-moz-animation-name:nodeInserted;-webkit-animation-name:nodeInserted;-o-animation-name:nodeInserted;}</style></head>
+<body>
+<header>
+<h1>Homework 1--5: The Shine Graphics Language</h1>
+</header>
+
+<section>
+  <dl>
+    <dt>Hand out</dt>
+    <dd>Reference program: <a href="http://shtech.org/course/ist-data/shine">shine</a> (<a href="http://en.wikipedia.org/wiki/SHA-1">SHA-1</a>: <code>1271a7b036c8d4b279a1b496b8226f51339521d0</code>).</dd>
+    <dt>Check in</dt>
+    <dd><ul>
+      <li>For homework 1 through 4:
+      <ul>
+	      <li>If you program in Python, check in <code>shine.py</code>. Do <em>not</em> check in <code>shine</code> .</li>
+	      <li>If you program in Go or Rust, check in your source code and Makefile. When the gradebot runs <code>make</code> with no argument, your <code>Makefile</code> must create an executable named <code>shine</code>.</li>
+      </ul>
+      Your program should run on Linux and behave the same as my reference program. Check in your code with the appropriate <code>git</code> commands.</li>
+      <li>For homework 5: <code>masterpiece.shn</code></li>
+    </ul>
+    </dd>
+  </dl>
+  <h2>Policy on plagiarism</h2>
+  <p>These are individual homework. While you may discuss the ideas and algorithms or share the test cases with others, at no time may you read, possess, or submit the solution code of anyone else (including people outside this course), submit anyone else's solution code to your account on the gradebot, or allow anyone else to read or possess your source code. We will detect plagiarism using automated tools and will prosecute all violations to the fullest extent of the university regulations, including failing this course, academic probation, and expulsion from the university.</p>
+</section>
+
+<section>
+<h2>Description</h2>
+<p>Translation is an important task for computers. Many tools translate programs from one language to another, such as compilers. In homework 1--4, you will develop a tool that translates pictures in the <a href="http://shtech.org/course/ist/homework/shine/#spec">Shine</a> language to <a href="http://en.wikipedia.org/wiki/Encapsulated_PostScript">Encapsulated PostScript</a> (EPS). In homework 5, you will draw a picture in Shine.</p>
+
+<h2 id="spec">The Shine Graphics Language Specification</h2>
+<h3 id="Notation">Notation</h3>
+<p>
+The syntax is specified using Extended Backus-Naur Form (EBNF):
+</p>
+
+<pre class="grammar">Production  = production_name "=" [ Expression ] "." .
+Expression  = Alternative { "|" Alternative } .
+Alternative = Term { Term } .
+Term        = production_name | token [ "…" token ] | Group | Option | Repetition .
+Group       = "(" Expression ")" .
+Option      = "[" Expression "]" .
+Repetition  = "{" Expression "}" .
+</pre>
+
+<p>
+Productions are expressions constructed from terms and the following
+operators, in increasing precedence:
+</p>
+<pre class="grammar">|   alternation
+()  grouping
+[]  option (0 or 1 times)
+{}  repetition (0 to n times)
+</pre>
+
+<p>
+Lower-case production names are used to identify lexical tokens.
+Non-terminals are in CamelCase. Lexical tokens are enclosed in
+double quotes <code>""</code> or back quotes <code>``</code>.
+</p>
+
+<p>Tokens form the vocabulary of the Shine language. A token can be a command name (e.g., <code>line</code>), operator (e.g., <code>+</code>), value (e.g., <code>3.1415</code>), or delimiter (e.g., <code>,</code>). Whitespace, formed from spaces (<code>" "</code>), horizontal tabs (<code>"\t"</code>), carriage returns (<code>"\r"</code>), and newlines (<code>"\n"</code>), is ignored except as it separates tokens that would otherwise combine into a single token.</p>
+
+<h3>Grammar</h3>
+<pre class="ebnf"><a id="graph">Graph</a> = { <a href="http://shtech.org/course/ist/homework/shine/#Command" class="noline">Command</a> } .
+
+<a id="Command">Command</a> = <a href="http://shtech.org/course/ist/homework/shine/#transformable" class="noline">Transformable</a> | <a href="http://shtech.org/course/ist/homework/shine/#parameter" class="noline">DrawingParameter</a> | <a href="http://shtech.org/course/ist/homework/shine/#assignment" class="noline">Assignment</a> | <a href="http://shtech.org/course/ist/homework/shine/#for" class="noline">For</a>.
+
+<a id="transformable">Transformable</a> = <a href="http://shtech.org/course/ist/homework/shine/#picture" class="noline">Picture</a> | <a href="http://shtech.org/course/ist/homework/shine/#transformation" class="noline">Transformation</a> | <a href="http://shtech.org/course/ist/homework/shine/#group" class="noline">Group</a> .
+
+<a id="picture">Picture</a> = <a href="http://shtech.org/course/ist/homework/shine/#picture_name" class="noline">picture_name</a> "(" <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> { "," <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> } ")" .
+
+<a id="transformation">Transformation</a> = <a href="http://shtech.org/course/ist/homework/shine/#transformation_name" class="noline">transformation_name</a> "(" <a href="http://shtech.org/course/ist/homework/shine/#transformable" class="noline">Transformable</a> "," <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> { "," <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> } ")" .
+
+<a id="group">Group</a> = "{" [ <a href="http://shtech.org/course/ist/homework/shine/#command" class="noline">Command</a> { ";" <a href="http://shtech.org/course/ist/homework/shine/#command" class="noline">Command</a> } ] "}" .
+
+<a id="parameter">DrawingParameter</a> = <a href="http://shtech.org/course/ist/homework/shine/#parameter_name" class="noline">drawing_parameter_name</a> "(" <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> { "," <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> } ")" .
+
+<a id="assignment">Assignment</a> = "let" <a href="http://shtech.org/course/ist/homework/shine/#variable" class="noline">variable</a> "=" <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> .
+
+<a id="for">For</a> = "for" <a href="http://shtech.org/course/ist/homework/shine/#variable" class="noline">variable</a> "in" <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> ".." <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> <a href="http://shtech.org/course/ist/homework/shine/#group" class="noline">Group</a> .
+
+<a id="expression">Expression</a> = "(" ( <a href="http://shtech.org/course/ist/homework/shine/#unary" class="noline">UnaryExpression</a> | <a href="http://shtech.org/course/ist/homework/shine/#binary" class="noline">BinaryExpression</a> ) ")" | <a href="http://shtech.org/course/ist/homework/shine/#variable" class="noline">variable</a> | <a href="http://shtech.org/course/ist/homework/shine/#value" class="noline">value</a> .
+
+<a id="unary">UnaryExpression</a> = <a href="http://shtech.org/course/ist/homework/shine/#unary_operator" class="noline">unary_operator</a> <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> .
+
+<a id="binary">BinaryExpression</a> = <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> <a href="http://shtech.org/course/ist/homework/shine/#binary_operator" class="noline">binary_operator</a> <a href="http://shtech.org/course/ist/homework/shine/#expression" class="noline">Expression</a> .
+
+<a id="picture_name">picture_name</a> = "line" | "rect" | "tri" | "square" | "penta" | "hexa" | "ngon" | "sector" | "filledrect" |
+               "filledtri" | "filledsquare" | "filledpenta" | "filledhexa" | "filledngon" | "filledsector" .
+
+<a id="transformation_name">transformation_name</a> = "translate" | "rotate" | "scale" .
+
+<a id="parameter_name">drawing_parameter_name</a> = "color" | "linewidth" .
+
+<a id="unary_operator">unary_operator</a> = "sin" | "cos" .
+
+<a id="binary_operator">binary_operator</a> = "+" | "-" | "*" | "/" .
+
+<a id="variable">variable</a> = <a href="http://shtech.org/course/ist/homework/shine/#letter" class="noline">letter</a> { <a href="http://shtech.org/course/ist/homework/shine/#letter" class="noline">letter</a> | <a href="http://shtech.org/course/ist/homework/shine/#unicode_digit" class="noline">unicode_digit</a> } .
+
+<a id="letter">letter</a> = <a href="http://shtech.org/course/ist/homework/shine/#unicode_letter" class="noline">unicode_letter</a> | "_" .
+
+<a id="unicode_letter">unicode_letter</a> = /* a Unicode code point classified as "Letter" */ .
+
+<a id="unicode_digit">unicode_digit</a> = /* a Unicode code point classified as "Decimal Digit" */ .
+
+<a id="value">value</a> = /* a floating point number */ .
+</pre>
+
+<p>Note: A variable cannot have the same name as any operators.</p>
+
+<p>The following sections describe the semantics of the above commands.</p>
+
+<h3>Pictures</h3>
+
+<dl>
+  <dt><code>line(X<sub>0</sub>, Y<sub>0</sub>, X<sub>1</sub>, Y<sub>1</sub>)</code></dt>
+  <dd>Draw a line with the first endpoint at (X<sub>0</sub>, Y<sub>0</sub>) and the second endpoint at (X<sub>1</sub>, Y<sub>1</sub>).</dd>
+
+  <dt><code>rect(X, Y, W, H)</code></dt>
+  <dd>Draw the outline of a
+rectangle whose lower left corner is at (X,Y), and which has a width
+of W and height of H. Draw the rectangle counter-clockwise
+starting from the lower left corner.</dd>
+
+  <dt><code>tri(X, Y, R)</code></dt>
+  <dd>Draw the outline of an equilateral triangle whose center is at (X, Y) with one of the vertices at (X + R, Y). Draw the triangle counter-clockwise starting from (X + R, Y). This order applies to all the following pictures.</dd>
+
+  <dt><code>square(X, Y, R)</code></dt>
+  <dd>Draw the outline of a square whose center is at (X, Y) with one of the vertices at (X + R, Y).</dd>
+
+  <dt><code>penta(X, Y, R)</code></dt>
+  <dd>Draw the outline of a regular pentagon whose center is at (X, Y) with one of the vertices at (X + R, Y).</dd>
+
+  <dt><code>hexa(X, Y, R)</code></dt>
+  <dd>Draw the outline of a regular hexagon whose center is at (X, Y) with one of the vertices at (X + R, Y).</dd>
+
+  <dt><code>ngon(X, Y, R, N)</code></dt>
+  <dd>Draw the outline of a regular N-gon for integer N &gt; 2, whose center is at (X, Y) with one of the vertices at (X + R, Y).</dd>
+
+  <dt><code class="new">sector(X, Y, R, B, E)</code></dt>
+  <dd>Draw the outline of a circular sector where (X, Y) is the center, R is the radius, B and E are the beginning and ending angles, respectively, measured in degrees counterclockwise from the positive x-axis. Draw this sector in the following order: (1) the line from the center to the beginning angle on the arc; (2) the arc from the beginning angle to the ending angle counterclockwise; and (3) the line from the ending angle on the arc back to the center.</dd>
+</dl>
+
+<p>Each picture command except <code>line</code> has also a "filled" version, which takes the same parameters but fills the shape instead of drawing the outline. The name of the filled version starts with the prefix <code>filled</code>, e.g., <code>filledrect</code> draws a filled rectangle.</p>
+
+<h3>Transformations</h3>
+<p>Transform pictures using the commands below. The first parameter to a transformation command is a <a href="http://shtech.org/course/ist/homework/shine/#transformable">transformable</a>, which may be a <a href="http://shtech.org/course/ist/homework/shine/#picture">picture</a>, <a href="http://shtech.org/course/ist/homework/shine/#transformation">transformation</a>, or <a href="http://shtech.org/course/ist/homework/shine/#group">group</a>. The rest of the parameters are <a href="http://shtech.org/course/ist/homework/shine/#expression">expressions</a>. Apply the transformation to the transformablebefore executing the transformable.</p>
+
+  <dl>
+  <dt><code>translate(P, X, Y)</code></dt>
+  <dd>Translate the <a href="http://shtech.org/course/ist/homework/shine/#transformable">transformable</a> P by X units along the x-axis and Y units along the y-axis. .</dd>
+
+  <dt><code>rotate(P, X)</code></dt>
+  <dd>Rotate the <a href="http://shtech.org/course/ist/homework/shine/#transformable">transformable</a> P by X degrees about the origin.</dd>
+
+  <dt><code>scale(P, S)</code></dt>
+  <dd>Scale the <a href="http://shtech.org/course/ist/homework/shine/#transformable">transformable</a> P by a factor of S, where S &gt; 0. If (X ,Y) is a vertice on the picture, then its new coordinate after the scaling will be (X * S, Y * S).</dd>
+</dl>
+
+<h3>Group</h3>
+
+<p>The <a href="http://shtech.org/course/ist/homework/shine/#group">group</a> command consists of a sequence of commands.</p>
+
+<p><code>{ C<sub>1</sub> ; C<sub>2</sub> ; ... ; C<sub>N</sub> }</code></p>
+
+<p>It executes each command <code>C<sub>1</sub> ... C<sub>N</sub></code> in the group sequentially. If the group is the first parameter to a transformation, then apply the transformation to every command <code>C<sub>1</sub> ... C<sub>N</sub></code> before executing them.</p>
+
+  <h3>Drawing parameters</h3>
+<p>Set drawing parameters using the commands below. Their parameters are <a href="http://shtech.org/course/ist/homework/shine/#expression">expressions</a>.</p>
+<dl>
+  <dt><code>color(R, G, B)</code></dt>
+  <dd>Set the current color to (R,G,B). The arguments must be numbers between 0 and 1, inclusive.</dd>
+  <dt><code>linewidth(W)</code></dt>
+  <dd>Set the current line width to W, which must be a
+non-negative number. This meaning of W is as that of
+PostScript.</dd>
+</dl>
+
+<h3>Assignment</h3>
+
+<p><code>let <a href="http://shtech.org/course/ist/homework/shine/#variable">V</a> "=" <a href="http://shtech.org/course/ist/homework/shine/#expression">E</a></code></p>
+
+<p>The assignment command binds the name (variable) V to the value of the expression E in Shine's global <a href="http://shtech.org/doc/manual/python3/tutorial/classes.html#python-scopes-and-namespaces">namespace</a>. You may rebind a name to another value, but you may not delete names.</p>
+
+<h3>The <code>for</code> command</h3>
+
+<p><code>for V in L .. H G</code></p>
+
+<p>The <a href="http://shtech.org/course/ist/homework/shine/#for">for</a> command executes every command in the group G multiple times in the following steps.</p>
+<ol>
+  <li>Evaluate the expressions L and H and round them to the nearest integers.</li>
+  <li>If L ≤ H, then
+    <ol>
+      <li>Run <code>let V = L</code>, <code>G</code>, <code>let V = (L+1)</code>, <code>G</code>, ... , <code>let V = H</code>, <code>G</code>. </li>
+      <li>If V existed in the namespace before running this <code>for</code> command, then restore V's previous value. Otherwise, delete V from the namespace.</li></ol>
+  </li>
+</ol>
+
+<h3>Expressions</h3>
+
+<p><a href="http://shtech.org/course/ist/homework/shine/#expression">Expressions</a> in Shine have their usual meanings. Evaluate all the expressions in floating points. Round the floating point to the nearest integer when an integer is required.</p>
+
+<h2>Encapsulated PostScript</h2>
+
+<p>Your program translates a graph written in the Shine language into an <a href="http://en.wikipedia.org/wiki/Encapsulated_PostScript">Encapsulated PostScript</a> (EPS) document. You can view an EPS file with any PostScript viewer. A popular one is <i>gv</i> available on Linux. Your EPS should start with the following prolog, followed by PostScript commands.
+</p>
+
+<pre>%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 1239 1752
+</pre>
+
+<h3>Graphics state</h3>
+<p>
+The origin of a PostScript starts at (0,0) in the lower left corner, with x-coordinates increasing to the right and y-coordinates increasing to the top. To draw a picture, first build a path, and then realize it using either the <code>stroke</code> or <code>fill</code> command. The PostScript interpreter maintains a graphics state, which for our purposes consists of
+</p>
+
+<ul>
+<li>the current point (x,y), which is initially undefined.
+</li>
+<li>the current path, which is initially empty.
+</li>
+<li>the current color (r,g,b), where r,g,b are between 0 and 1 inclusive. (0,0,0) is black and (1,1,1) is white. The initial color is black.
+</li>
+<li>the current line width, which defines the thickness of the outline drawn by the <code>stroke</code> command. The initial line width is 1.
+</li>
+</ul>
+
+<h3>Commands</h3>
+<p>
+Use the following subset of the PostScript language to construct your PostScript file. Represent all the operands in decimal numbers (e.g. 0.1, 2.3, 45).
+</p>
+
+<dl>
+  <dt><code>X Y moveto</code></dt>
+  <dd>Set the current point to (X, Y).</dd>
+  <dt><code>X Y lineto</code></dt>
+  <dd>Add a line segment to the current path starting at the current point and ending in (X, Y), which will become the new current point.</dd>
+  <dt><code class="new">X Y R B E arc</code></dt>
+  <dd>Draw an arc centered at (X, Y) with radius R, beginning at B and ending at E degrees measured counterclockwise from the positive x axis. Both B and E must be in the range of [0, 360). (The last is not required by PostScript, but it normalizes your output to be consistent with that of the reference program.)</dd>
+  <dt><code>stroke</code></dt>
+  <dd>Draw lines with the current line width and color over all the segments in the current path. Then, clear the current path and undefine the current point.
+  </dd>
+  <dt><code>fill</code></dt>
+  <dd>Fill the interior of the current path with the current color. Then, clear the current path and undefine the current point.
+  </dd>
+  <dt><code>W setlinewidth</code></dt>
+  <dd>Set the current line width to W.</dd>
+  <dt><code>R G B setrgbcolor</code></dt>
+  <dd>Set the current color to (R, G, B).</dd>
+</dl>
+
+<h2>Homework requirements</h2>
+
+<h3>Input and output</h3>
+
+<p>Read from <a href="https://en.wikipedia.org/wiki/Standard_streams#Standard_input_.28stdin.29">stdin</a>, and write to <a href="https://en.wikipedia.org/wiki/Standard_streams#Standard_output_.28stdout.29">stdout</a>.</p>
+
+<dl>
+  <dt>Input</dt>
+  <dd>To make it easier for your program to parse the input,
+    <ul>
+      <li>adjacent tokens in the test cases are separated by at least one white space (<code>" "</code>, <code>"\t"</code>, <code>"\n"</code>, <code>"\r"</code>).</li>
+      <li>all the characters in the test cases are ASCII.</li>
+      <li>all the values are integers or <a href="http://shtech.org/doc/manual/python3/reference/lexical_analysis.html#floating-point-literals">floating point literals</a> without the exponent part, e.g., <code>1, -1, 0.1, -1.0</code> .</li>
+      <li>all the test cases are valid Shine graphs.</li>
+    </ul>
+    Therefore, your program may parse only a subset of the Shine language; however, the reference program parses the full Shine language.
+  </dd>
+  <dt>Output</dt>
+  <dd><ul>
+    <li>The output of your program should simulate that of the reference program. To tolerate small errors in floating point computation, the gradebot uses <a href="http://shtech.org/course/ist/homework/shine/cmpfloat.py">cmpfloat.py</a> (<a href="http://en.wikipedia.org/wiki/SHA-1">SHA-1</a>: <kbd>08ed50ecf4b0356527da25e967b06483876f7f75</kbd>) to compare the output of your program to that of the reference program. When they are equal, <kbd>cmpfloat.py</kbd> outputs nothing.</li>
+    <li>Your program may not return a non-zero <a href="https://en.wikipedia.org/wiki/Exit_status">exit status</a>.</li>
+  </ul>
+  </dd>
+</dl>
+
+<p>Homework 1, 2, and 3 are mandatory for section A, and homework 1 is mandatory for section B. If a homework isn't mandatory for your section, you are still encouraged to complete it, as you will get extra credits.</p>
+
+<h3>Homework 1</h3>
+<p>Implement all the picture commands. For simplicity, assume that expressions contain only numbers.</p>
+
+<h3>Homework 2</h3>
+<p>Implement all the features in Homework 1, plus handling arbitrary expressions.</p>
+
+<h3>Homework 3</h3>
+<p>Implement all the features in Homework 2, plus transformations, drawing parameters, and assignment.</p>
+
+<h3>Homework 4</h3>
+<p>Implement the entire Shine language.</p>
+
+<h3>Homework 5</h3>
+<p>Express your artistic creativity. Create a <code>masterpiece.shn</code> using the Shine language. You may use the reference program to produce the EPS output before finishing your own program.</p>
+
+<p>We will exhibit your submitted masterpieces to the entire university community. While this exercise is to help you understand all the commands of the drawing program, you may also take this opportunity to demonstrate your creativity. We will give awards for masterpieces chosen by a panel of celebrity judges.</p>
+
+<p>We will evaluate your masterpieces based on both their artistic appeal and their code elegance. We will ask a panel of experts in computer graphics to select the best masterpieces. While the criteria are inevitably subjective, the following qualities are desirable:</p>
+
+<ul>
+    <li>Diversity: Use many picture elements and transformations so that the picture doesn't look tedious.</li>
+    <li>Compactness: Combine picture elements compactly without much redundancy.</li>
+    <li>Repetition and symmetry: Repeitition and symmetry in pictures exude beauty. However, avoid repetition in code. Use the <code>for</code> command to produce repeated picture elements succinctly.</li>
+    <li>Story-telling: A good artist work is always expressive in its visual appearance, in the way in which it is delivered to the audience, and in its underlying motivation of design.</li>
+</ul>
+
+<p>For best visual effect, I recommend:</p>
+<ul>
+  <li>Center your picture.</li>
+  <li>Scale your picture up as much as possible. FYI, the canvas size is 1239(W) by 1752(H).</li>
+</ul>
+
+<p>Here are some <a href="http://shtech.org/m/selected.pdf">examples</a> of masterpieces. Be ambitious. Demonstrate your creativity.</p>
+</section>
+
+<footer>
+<hr style="clear: both;">
+<div style="float:left">
+<address>
+Chen, Hao &lt;<code>chenhao</code> AT <code>shanghaitech.edu.cn</code>&gt;
+</address>
+Last modified: 2016-03-05
+</div>
+<div style="float:right">
+<a href="http://validator.w3.org/check/referer">
+  <img src="./Homework 1--5_ The Shine Graphics Language_files/html5-40.png" alt="Valid HTML 5!">
+</a>
+</div>
+</footer>
+
+
+</body><style type="text/css" id="stylebot-global-css">* {font-family: "黑体-简 细体","黑体-简 细体" !important;}</style><iframe allowtransparency="true" frameborder="0" id="abs-top-frame" src="./Homework 1--5_ The Shine Graphics Language_files/top.html" style="position: fixed !important; z-index: 2147483647 !important; overflow: hidden !important; top: 0px !important; left: 0px !important; right: 0px !important; width: 0px !important; height: 0px !important; max-height: none !important; min-height: 0px !important; margin: 0px auto !important; padding: 0px !important; border: 0px !important; display: none !important; background-color: transparent !important;"></iframe></html>
